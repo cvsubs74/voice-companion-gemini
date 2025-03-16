@@ -1,4 +1,3 @@
-
 // Voice Assistant Service
 import geminiService from './geminiService';
 
@@ -333,21 +332,45 @@ class VoiceAssistantService {
     
     // Use the Web Speech API for text-to-speech
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
     
-    // Get a nice voice if available
+    // Make the voice more like a teddy bear talking to a child
+    utterance.rate = 0.9;     // Slightly slower rate
+    utterance.pitch = 1.4;    // Higher pitch for a friendly, child-like voice
+    utterance.volume = 1.0;   // Full volume
+    
+    // Get the available voices
     const voices = window.speechSynthesis.getVoices();
+    
+    // Try to find a female voice first (often better for child-friendly voices)
+    // then fall back to any voice that might sound good for a teddy bear
     const preferredVoice = voices.find(voice => 
-      voice.name.includes('Google') && voice.name.includes('Female') ||
-      voice.name.includes('Samantha') ||
-      voice.name.includes('Daniel')
+      // Look for female voices first
+      (voice.name.includes('Female') || voice.name.includes('female') || voice.name.includes('girl')) ||
+      // Kid friendly voice names
+      voice.name.includes('Samantha') || 
+      voice.name.includes('Karen') ||
+      voice.name.includes('Tessa') ||
+      voice.name.includes('Junior') ||
+      voice.name.includes('Child') ||
+      voice.name.includes('Kid')
     );
     
     if (preferredVoice) {
       utterance.voice = preferredVoice;
+      console.log(`Using voice: ${preferredVoice.name}`);
+    } else {
+      console.log('No preferred voice found, using default voice');
     }
+    
+    // Add a gentle pause between sentences for a more child-friendly pace
+    const sentences = text.split(/[.!?]+/).filter(Boolean);
+    
+    if (sentences.length > 1) {
+      // If we have multiple sentences, add slight pauses for a more gentle rhythm
+      text = sentences.join('. ');
+    }
+    
+    utterance.text = text;
     
     utterance.onend = () => {
       if (this.onStatusChange) {
