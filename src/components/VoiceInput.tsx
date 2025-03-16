@@ -25,6 +25,15 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
     setAnimateWave(processingState === 'listening');
   }, [processingState]);
 
+  useEffect(() => {
+    // If isListening is false but the UI still shows active states,
+    // ensure the UI reflects the correct state
+    if (!isListening && (processingState === 'listening')) {
+      // Force reset if there's a mismatch
+      setAnimateWave(false);
+    }
+  }, [isListening, processingState]);
+
   const handleClick = () => {
     if (isListening) {
       onStopListening();

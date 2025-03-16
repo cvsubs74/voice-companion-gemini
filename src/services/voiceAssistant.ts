@@ -9,6 +9,7 @@ class VoiceAssistantService {
   private audioProcessor: ScriptProcessorNode | null = null;
   private audioQueue: Array<Float32Array> = [];
   private recognitionTimeoutId: number | null = null;
+  private recognition: any = null; // Store recognition instance
   
   // Event callbacks
   private onStatusChange: ((status: string) => void) | null = null;
@@ -86,21 +87,45 @@ class VoiceAssistantService {
       return;
     }
     
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
+    this.recognition = new SpeechRecognition();
+    this.recognition.continuous = false;
+    this.recognition.interimResults = false;
+    this.recognition.lang = 'en-US';
     
-    recognition.onstart = () => {
+    this.recognition.onstart = () => {
       if (this.onStatusChange) {
         this.onStatusChange('Listening...');
       }
       console.log('Speech recognition started');
     };
     
-    recognition.onresult = (event) => {
+    this.recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       console.log('Recognized:', transcript);
+      
+      // Check if the user said "stop" or "stop talking"
+      if (
+        transcript.toLowerCase().includes('stop') || 
+        transcript.toLowerCase().includes('stop talking') || 
+        transcript.toLowerCase().includes('shut up')
+      ) {
+        console.log('Stop command detected');
+        
+        // Stop the current speech
+        window.speechSynthesis.cancel();
+        
+        if (this.onStatusChange) {
+          this.onStatusChange('Stopped by voice command');
+          setTimeout(() => {
+            if (this.onStatusChange && this.isListening) {
+              this.onStatusChange('Listening...');
+            }
+          }, 1500);
+        }
+        
+        // Don't process this as a query to Gemini
+        return;
+      }
       
       if (this.onStatusChange) {
         this.onStatusChange('Processing...');
@@ -114,31 +139,61 @@ class VoiceAssistantService {
       this.getAIResponse(transcript);
     };
     
-    recognition.onerror = (event) => {
+    this.recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
       if (this.onError) {
         this.onError(`Speech recognition error: ${event.error}`);
       }
     };
     
-    recognition.onend = () => {
+    this.recognition.onend = () => {
+      console.log('Speech recognition ended');
+      // Only restart if we're still supposed to be listening
       if (this.isListening) {
-        recognition.start();
+        console.log('Restarting speech recognition');
+        try {
+          this.recognition.start();
+        } catch (err) {
+          console.error('Error restarting recognition:', err);
+        }
       }
     };
     
-    recognition.start();
+    try {
+      this.recognition.start();
+    } catch (err) {
+      console.error('Error starting recognition:', err);
+      if (this.onError) {
+        this.onError(`Error starting speech recognition: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
+    }
   }
   
   // Stop listening
   public stopListening() {
     if (!this.isListening) return;
     
+    console.log('Stopping listening');
+    
     // Stop any pending recognition
     if (this.recognitionTimeoutId) {
       window.clearTimeout(this.recognitionTimeoutId);
       this.recognitionTimeoutId = null;
     }
+    
+    // Stop the speech recognition
+    if (this.recognition) {
+      try {
+        this.recognition.stop();
+        console.log('Recognition stopped');
+      } catch (err) {
+        console.error('Error stopping recognition:', err);
+      }
+      this.recognition = null;
+    }
+    
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
     
     this.isListening = false;
     
@@ -272,6 +327,9 @@ class VoiceAssistantService {
     if (this.onStatusChange) {
       this.onStatusChange('Speaking...');
     }
+    
+    // Cancel any ongoing speech before starting new one
+    window.speechSynthesis.cancel();
     
     // Use the Web Speech API for text-to-speech
     const utterance = new SpeechSynthesisUtterance(text);
