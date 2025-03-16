@@ -333,42 +333,49 @@ class VoiceAssistantService {
     // Use the Web Speech API for text-to-speech
     const utterance = new SpeechSynthesisUtterance(text);
     
-    // Make the voice more like a teddy bear talking to a child
-    utterance.rate = 0.9;     // Slightly slower rate
-    utterance.pitch = 1.4;    // Higher pitch for a friendly, child-like voice
-    utterance.volume = 1.0;   // Full volume
+    // Make the voice sound more like a small kid or teddy bear
+    utterance.rate = 0.85;     // Even slower rate for child-like speech
+    utterance.pitch = 1.8;     // Much higher pitch for a child's voice
+    utterance.volume = 1.0;    // Full volume
     
     // Get the available voices
     const voices = window.speechSynthesis.getVoices();
     
-    // Try to find a female voice first (often better for child-friendly voices)
-    // then fall back to any voice that might sound good for a teddy bear
+    // Try to find voices that sound child-like
     const preferredVoice = voices.find(voice => 
-      // Look for female voices first
-      (voice.name.includes('Female') || voice.name.includes('female') || voice.name.includes('girl')) ||
-      // Kid friendly voice names
+      // Look specifically for child voices first
+      voice.name.includes('Kid') || 
+      voice.name.includes('Child') || 
+      voice.name.includes('Junior') || 
+      // Then try higher pitched voices
+      voice.name.includes('girl') ||
+      // Then fall back to female voices that might be pitched up
+      voice.name.includes('female') || 
+      voice.name.includes('Female') ||
       voice.name.includes('Samantha') || 
       voice.name.includes('Karen') ||
-      voice.name.includes('Tessa') ||
-      voice.name.includes('Junior') ||
-      voice.name.includes('Child') ||
-      voice.name.includes('Kid')
+      voice.name.includes('Tessa')
     );
     
     if (preferredVoice) {
       utterance.voice = preferredVoice;
       console.log(`Using voice: ${preferredVoice.name}`);
     } else {
-      console.log('No preferred voice found, using default voice');
+      console.log('No preferred voice found, using default voice with child-like settings');
     }
     
-    // Add a gentle pause between sentences for a more child-friendly pace
+    // Add frequent gentle pauses between phrases for a more child-like speech pattern
     const sentences = text.split(/[.!?]+/).filter(Boolean);
     
     if (sentences.length > 1) {
-      // If we have multiple sentences, add slight pauses for a more gentle rhythm
-      text = sentences.join('. ');
+      // If we have multiple sentences, add more pauses and make them sound more child-like
+      text = sentences.join('! ');
     }
+    
+    // Add some child-like expressions and speaking style
+    text = text.replace(/\b(I am)\b/gi, "I'm");
+    text = text.replace(/\b(cannot)\b/gi, "can't");
+    text = text.replace(/\b(will not)\b/gi, "won't");
     
     utterance.text = text;
     
