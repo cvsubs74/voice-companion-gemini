@@ -76,7 +76,8 @@ class VoiceAssistantService {
   
   // Use browser's SpeechRecognition API
   private useSpeechRecognition() {
-    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    // Use the type-safe way to access the SpeechRecognition API
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
       if (this.onError) {
@@ -301,4 +302,3 @@ class VoiceAssistantService {
 }
 
 export default new VoiceAssistantService();
-
