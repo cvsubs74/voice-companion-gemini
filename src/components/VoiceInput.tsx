@@ -3,11 +3,13 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Mic, MicOff, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+type ProcessingState = 'idle' | 'listening' | 'processing' | 'speaking' | 'error';
+
 type VoiceInputProps = {
   isListening: boolean;
   onStartListening: () => void;
   onStopListening: () => void;
-  processingState: 'idle' | 'listening' | 'processing';
+  processingState: ProcessingState;
 };
 
 const VoiceInput: React.FC<VoiceInputProps> = ({
@@ -53,9 +55,9 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
             : "bg-primary text-white hover:bg-primary/90",
           processingState === 'processing' && "opacity-70"
         )}
-        disabled={processingState === 'processing'}
+        disabled={processingState === 'processing' || processingState === 'speaking'}
       >
-        {processingState === 'processing' ? (
+        {processingState === 'processing' || processingState === 'speaking' ? (
           <Loader2 className="h-8 w-8 animate-spin" />
         ) : isListening ? (
           <MicOff className="h-8 w-8" />
