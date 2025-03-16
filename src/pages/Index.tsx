@@ -14,7 +14,7 @@ const Index = () => {
         
         <footer className="mt-6 text-center text-sm text-muted-foreground">
           <p>
-            Voice Assistant is a simulated demo. In a production app, this would connect to Vertex AI.
+            Voice Assistant powered by Google Gemini AI. Enter your API key to get started.
           </p>
         </footer>
       </main>

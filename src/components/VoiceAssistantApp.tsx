@@ -4,11 +4,23 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Settings, InfoIcon, Volume2 } from 'lucide-react';
+import { Settings, InfoIcon, Volume2, Key } from 'lucide-react';
+import { toast } from 'sonner';
 import VoiceInput from './VoiceInput';
 import ConversationBubble from './ConversationBubble';
 import StatusIndicator from './StatusIndicator';
 import voiceAssistant from '@/services/voiceAssistant';
+import geminiService from '@/services/geminiService';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter 
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type ConversationEntry = {
   id: string;
@@ -27,9 +39,17 @@ const VoiceAssistantApp: React.FC = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [debug, setDebug] = useState<string[]>([]);
   const [showDebug, setShowDebug] = useState(false);
+  const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
+  const [apiKey, setApiKey] = useState('');
   
-  // Initialize voice assistant
+  // Initialize voice assistant and check for saved API key
   useEffect(() => {
+    const savedApiKey = geminiService.getApiKey();
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+      addDebugMessage('API key loaded from storage');
+    }
+    
     voiceAssistant.setCallbacks({
       onStatusChange: (status) => {
         setStatusMessage(status);
@@ -86,6 +106,12 @@ const VoiceAssistantApp: React.FC = () => {
   }, [conversation]);
   
   const handleStartListening = () => {
+    if (!geminiService.getApiKey()) {
+      toast.error("Please set your Gemini API key first");
+      setApiKeyDialogOpen(true);
+      return;
+    }
+    
     setIsListening(true);
     addDebugMessage('Start listening requested');
     voiceAssistant.startListening();
@@ -95,6 +121,18 @@ const VoiceAssistantApp: React.FC = () => {
     setIsListening(false);
     addDebugMessage('Stop listening requested');
     voiceAssistant.stopListening();
+  };
+  
+  const handleSaveApiKey = () => {
+    if (!apiKey.trim()) {
+      toast.error("Please enter a valid API key");
+      return;
+    }
+    
+    geminiService.setApiKey(apiKey.trim());
+    setApiKeyDialogOpen(false);
+    toast.success("API key saved successfully");
+    addDebugMessage('API key saved');
   };
   
   const addConversationEntry = (type: 'user' | 'ai', message: string) => {
@@ -119,16 +157,26 @@ const VoiceAssistantApp: React.FC = () => {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">Voice Assistant</h1>
           <Badge variant="outline" className="bg-primary/10 text-primary">
-            Demo
+            Gemini AI
           </Badge>
         </div>
         
         <div className="flex items-center gap-2">
           <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setApiKeyDialogOpen(true)}
+            className="text-muted-foreground hover:text-foreground"
+            title="Set API Key"
+          >
+            <Key className="h-5 w-5" />
+          </Button>
+          <Button
             variant="ghost"
             size="icon"
             onClick={() => setShowDebug(prev => !prev)}
             className="text-muted-foreground hover:text-foreground"
+            title="Debug Info"
           >
             <InfoIcon className="h-5 w-5" />
           </Button>
@@ -153,9 +201,9 @@ const VoiceAssistantApp: React.FC = () => {
                       <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
                         <Volume2 className="h-6 w-6 text-primary" />
                       </div>
-                      <h3 className="text-lg font-medium">Your Voice Assistant</h3>
+                      <h3 className="text-lg font-medium">Gemini Voice Assistant</h3>
                       <p className="text-muted-foreground text-sm">
-                        Click the microphone button below and start speaking.
+                        Add your Gemini API key, then click the microphone button below and start speaking.
                         Try asking for information, help, or just chat!
                       </p>
                     </div>
@@ -203,6 +251,41 @@ const VoiceAssistantApp: React.FC = () => {
           processingState={processingState}
         />
       </div>
+      
+      {/* API Key Dialog */}
+      <Dialog open={apiKeyDialogOpen} onOpenChange={setApiKeyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gemini API Key</DialogTitle>
+            <DialogDescription>
+              Enter your Google Gemini API key to enable AI responses.
+              You can get a key from the Google AI Studio website.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="apiKey">API Key</Label>
+              <Input
+                id="apiKey"
+                type="password"
+                placeholder="Enter your Gemini API key"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApiKeyDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveApiKey}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

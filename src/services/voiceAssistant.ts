@@ -1,6 +1,6 @@
 
-// Mock implementation for frontend demonstration purposes
-// In a real app, these would connect to backend APIs
+// Voice Assistant Service
+import geminiService from './geminiService';
 
 class VoiceAssistantService {
   private isListening: boolean = false;
@@ -165,7 +165,7 @@ class VoiceAssistantService {
         this.onTranscript(randomQuery);
       }
       
-      // Simulate AI processing
+      // Get AI response using Gemini
       setTimeout(() => {
         this.getAIResponse(randomQuery);
       }, 1500);
@@ -177,12 +177,44 @@ class VoiceAssistantService {
     }, recognitionTime);
   }
   
-  // Get AI response (in a real app, this would call the Vertex AI API)
-  private getAIResponse(query: string) {
+  // Get AI response from Gemini API
+  private async getAIResponse(query: string) {
     if (this.onStatusChange) {
       this.onStatusChange('Getting AI response...');
     }
     
+    try {
+      // Check if we have a Gemini API key
+      if (!geminiService.getApiKey()) {
+        // Fallback to mock responses if no API key
+        this.getMockAIResponse(query);
+        return;
+      }
+      
+      // Use Gemini for a real response
+      const response = await geminiService.generateResponse(query);
+      
+      if (this.onAIResponse) {
+        this.onAIResponse(response);
+      }
+      
+      if (this.onStatusChange) {
+        this.onStatusChange('Idle');
+      }
+    } catch (error) {
+      console.error("Error getting AI response:", error);
+      
+      // Fallback to mock responses on error
+      this.getMockAIResponse(query);
+      
+      if (this.onError) {
+        this.onError(`Error getting AI response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+  }
+  
+  // Fallback to mock responses if Gemini is unavailable
+  private getMockAIResponse(query: string) {
     // Simulate AI response time
     setTimeout(() => {
       const responses: Record<string, string> = {
