@@ -63,8 +63,8 @@ class VoiceAssistantService {
       this.isListening = true;
       this.processAudio();
       
-      // Simulate speech recognition after a delay
-      this.simulateRecognition();
+      // Use browser's SpeechRecognition
+      this.useSpeechRecognition();
       
     } catch (error) {
       console.error('Error accessing microphone:', error);
@@ -72,6 +72,61 @@ class VoiceAssistantService {
         this.onError('Microphone access denied. Please grant permission.');
       }
     }
+  }
+  
+  // Use browser's SpeechRecognition API
+  private useSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      if (this.onError) {
+        this.onError('Speech recognition not supported in this browser');
+      }
+      return;
+    }
+    
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    
+    recognition.onstart = () => {
+      if (this.onStatusChange) {
+        this.onStatusChange('Listening...');
+      }
+      console.log('Speech recognition started');
+    };
+    
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      console.log('Recognized:', transcript);
+      
+      if (this.onStatusChange) {
+        this.onStatusChange('Processing...');
+      }
+      
+      if (this.onTranscript) {
+        this.onTranscript(transcript);
+      }
+      
+      // Send to Gemini API
+      this.getAIResponse(transcript);
+    };
+    
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      if (this.onError) {
+        this.onError(`Speech recognition error: ${event.error}`);
+      }
+    };
+    
+    recognition.onend = () => {
+      if (this.isListening) {
+        recognition.start();
+      }
+    };
+    
+    recognition.start();
   }
   
   // Stop listening
@@ -136,47 +191,6 @@ class VoiceAssistantService {
     return sum / audioData.length;
   }
   
-  // Simulate speech recognition (in a real app, this would use a proper API)
-  private simulateRecognition() {
-    // Random recognition time between 2-5 seconds
-    const recognitionTime = 2000 + Math.random() * 3000;
-    
-    this.recognitionTimeoutId = window.setTimeout(() => {
-      if (!this.isListening) return;
-      
-      if (this.onStatusChange) {
-        this.onStatusChange('Processing...');
-      }
-      
-      // Get a random example query
-      const exampleQueries = [
-        "What's the weather like today?",
-        "Tell me about the latest technology news",
-        "How does artificial intelligence work?",
-        "What are the best restaurants nearby?",
-        "Can you explain quantum computing?",
-        "What's your favorite movie?"
-      ];
-      
-      const randomQuery = exampleQueries[Math.floor(Math.random() * exampleQueries.length)];
-      
-      // Send the transcript
-      if (this.onTranscript) {
-        this.onTranscript(randomQuery);
-      }
-      
-      // Get AI response using Gemini
-      setTimeout(() => {
-        this.getAIResponse(randomQuery);
-      }, 1500);
-      
-      // Continue listening if still active
-      if (this.isListening) {
-        this.simulateRecognition();
-      }
-    }, recognitionTime);
-  }
-  
   // Get AI response from Gemini API
   private async getAIResponse(query: string) {
     if (this.onStatusChange) {
@@ -226,7 +240,21 @@ class VoiceAssistantService {
         "What's your favorite movie?": "As an AI, I don't watch movies or have personal preferences. But I'd be happy to discuss popular films or recommend something based on genres you enjoy!"
       };
       
-      const response = responses[query] || "I'm not sure how to respond to that. Could you ask something else?";
+      let response = "I'm not sure how to respond to that. Could you ask something else?";
+      
+      // If query matches exactly (unlikely but checking anyway)
+      if (responses[query]) {
+        response = responses[query];
+      } else {
+        // Check for similar queries (more likely case)
+        for (const key in responses) {
+          if (query.toLowerCase().includes(key.toLowerCase()) || 
+              key.toLowerCase().includes(query.toLowerCase())) {
+            response = responses[key];
+            break;
+          }
+        }
+      }
       
       if (this.onAIResponse) {
         this.onAIResponse(response);
@@ -273,3 +301,4 @@ class VoiceAssistantService {
 }
 
 export default new VoiceAssistantService();
+
